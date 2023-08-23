@@ -92,11 +92,16 @@ class DownloadPodcast:
 
     def get_next_episode(self):
         episode_element_in_podcast_page = None
-        next_episode_xpath = f'//*[@id="main"]/div/div[3]/div/div/div[{self.current_episode_index}]/div/div/div[1]/div[4]/p[1]/a'
-        try:
-            episode_element_in_podcast_page = self.web_scraping.find_element_by_xpath(next_episode_xpath)
-        except Exception:
-            print('XPath did not match, trying a different one')
+        xpath_paths = [
+            f'//*[@id="main"]/div/div[4]/div/div/div[{self.current_episode_index}]/div/div/div[1]/div[4]/p[1]/a',
+           f'//*[@id="main"]/div/div[3]/div/div/div[{self.current_episode_index}]/div/div/div[1]/div[4]/p[1]/a'
+        ]
+        for xpath in xpath_paths:
+            try:
+                episode_element_in_podcast_page = self.web_scraping.find_element_by_xpath(xpath)
+                break
+            except Exception:
+                print('XPath did not match, trying a different one')
         if episode_element_in_podcast_page is None:
             return None
         print(f'Episode {self.current_episode_index} found!')
