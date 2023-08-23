@@ -7,32 +7,46 @@ from src.web_scraper import WebScraper
 
 class DownloadPodcast:
 
-    def __init__(self, podcast_name, episode_name, latest_episode):
+    def __init__(self, podcast_name, episode_name, latest_episode, all_episodes):
         self.podcast_name = podcast_name.lower()
         self.episode_search_name = episode_name
         self.latest_episode = latest_episode
+        self.all_episodes = all_episodes
         self.episode_name = None
         self.config = Config()
         self.podcast_url = self.get_podcast_url
-        self.web_scraping = WebScraper()
+        self.web_scraping = WebScraper(headless=True)
         self.audio = Audio()
+        self.current_episode_index = 1
 
     @property
     def get_podcast_url(self):
-
         return self.config.get_podcast_url(self.podcast_name)
 
     def download_episode(self):
         self.web_scraping.start_connection(self.podcast_url)
-        if self.latest_episode:
+        if self.all_episodes:
+            self.web_scraping.driver.implicitly_wait(2)
+            episode_element_in_podcast_page = ''
+            while episode_element_in_podcast_page is not None:
+                episode_element_in_podcast_page = self.get_next_episode()
+                if episode_element_in_podcast_page is not None:
+                    self.download_episode_element(episode_element_in_podcast_page)
+                self.web_scraping.start_connection(self.podcast_url)
+        elif self.latest_episode:
             episode_element_in_podcast_page = self.get_last_episode()
+            self.download_episode_element(episode_element_in_podcast_page)
         else:
             episode_element_in_podcast_page = self.search_episode()
+            self.download_episode_element(episode_element_in_podcast_page)
+
+        self.web_scraping.close_connection()
+
+    def download_episode_element(self, episode_element_in_podcast_page):
         self.web_scraping.click_element(episode_element_in_podcast_page)
         chapter_page = self.web_scraping.find_element_by_id('dlink')
         self.web_scraping.click_element(chapter_page)
         self._get_audio_url()
-        self.web_scraping.close_connection()
 
     def get_last_episode(self):
         xpath_paths = [
@@ -74,6 +88,20 @@ class DownloadPodcast:
                 break
         self._save_chapter_name(episode_element_in_podcast_page)
 
+        return episode_element_in_podcast_page
+
+    def get_next_episode(self):
+        episode_element_in_podcast_page = None
+        next_episode_xpath = f'//*[@id="main"]/div/div[3]/div/div/div[{self.current_episode_index}]/div/div/div[1]/div[4]/p[1]/a'
+        try:
+            episode_element_in_podcast_page = self.web_scraping.find_element_by_xpath(next_episode_xpath)
+        except Exception:
+            print('XPath did not match, trying a different one')
+        if episode_element_in_podcast_page is None:
+            return None
+        print(f'Episode {self.current_episode_index} found!')
+        self._save_chapter_name(episode_element_in_podcast_page)
+        self.current_episode_index += 1
         return episode_element_in_podcast_page
 
     def _save_chapter_name(self, podcast_page):
