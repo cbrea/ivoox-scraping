@@ -30,6 +30,7 @@ parser.add_argument(
     '-all',
     action='store_true',
     help='Downloads all episodes from provided podcast',
+    default=False,
 )
 
 args = parser.parse_args()
@@ -38,13 +39,13 @@ args = parser.parse_args()
 def main(podcast_name, episode_name, latest_episode, all_episodes):
     if len(podcast_name) > 1:
         for single_podcast_name in podcast_name:
-            dp = DownloadPodcast(single_podcast_name, None, True)
+            dp = DownloadPodcast(single_podcast_name, None, True, False)
             dp.download_episode()
     elif podcast_name[0] == 'all':
         from src.config import Config
         config = Config()
         for podcast_name in config.get_podcast_keys():
-            dp = DownloadPodcast(podcast_name, None, True)
+            dp = DownloadPodcast(podcast_name, None, True, False)
             dp.download_episode()
     else:
         podcast_name = podcast_name[0] if podcast_name else None

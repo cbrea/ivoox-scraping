@@ -28,11 +28,26 @@ class DownloadPodcast:
         if self.all_episodes:
             self.web_scraping.driver.implicitly_wait(2)
             episode_element_in_podcast_page = ''
-            while episode_element_in_podcast_page is not None:
-                episode_element_in_podcast_page = self.get_next_episode()
-                if episode_element_in_podcast_page is not None:
-                    self.download_episode_element(episode_element_in_podcast_page)
-                self.web_scraping.start_connection(self.podcast_url)
+            current_initial_page = self.get_podcast_url
+            current_page_index = 1
+
+            while True:
+                while episode_element_in_podcast_page is not None:
+                    episode_element_in_podcast_page = self.get_next_episode()
+                    if episode_element_in_podcast_page is not None:
+                        self.download_episode_element(episode_element_in_podcast_page)
+                    # go back to initial podcast page
+                    self.web_scraping.start_connection(current_initial_page)
+                print('No more episodes found in this page, trying to move to next page')
+                if not self.go_to_next_page():
+                    print('No more pages found in this podcast')
+                    break
+                current_page_index += 1
+                self.current_episode_index = 1
+                episode_element_in_podcast_page = ''
+                print(f'Now at page {current_page_index}')
+                current_initial_page = self.web_scraping.driver.current_url
+
         elif self.latest_episode:
             episode_element_in_podcast_page = self.get_last_episode()
             self.download_episode_element(episode_element_in_podcast_page)
@@ -59,7 +74,7 @@ class DownloadPodcast:
                 episode_element_in_podcast_page = self.web_scraping.find_element_by_xpath(xpath)
                 break
             except Exception:
-                print('XPath did not match, trying a different one')
+                print('XPath for the last episode did not match, trying a different one')
         if episode_element_in_podcast_page is None:
             raise Exception('Could not find the last episode of the podcast: {}'.format(self.podcast_name))
         self._save_chapter_name(episode_element_in_podcast_page)
@@ -101,13 +116,31 @@ class DownloadPodcast:
                 episode_element_in_podcast_page = self.web_scraping.find_element_by_xpath(xpath)
                 break
             except Exception:
-                print('XPath did not match, trying a different one')
+                print('XPath for next episode did not match, trying a different one')
         if episode_element_in_podcast_page is None:
             return None
         print(f'Episode {self.current_episode_index} found!')
         self._save_chapter_name(episode_element_in_podcast_page)
         self.current_episode_index += 1
         return episode_element_in_podcast_page
+
+    def go_to_next_page(self):
+        next_page = None
+        xpath_paths = [
+            '//*[@id="main"]/div/div[4]/div/nav/ul/li[12]/a',
+            '//*[@id="main"]/div/div[3]/div/nav/ul/li[12]/a'
+        ]
+        for xpath in xpath_paths:
+            try:
+                next_page = self.web_scraping.find_element_by_xpath(xpath)
+                break
+            except Exception:
+                print('XPath for next page did not match, trying a different one')
+        if next_page is None:
+            print('Next element not found')
+            return None
+        self.web_scraping.click_element(next_page)
+        return next_page
 
     def _save_chapter_name(self, podcast_page):
         self.episode_name = podcast_page.get_attribute('title')
