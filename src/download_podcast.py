@@ -7,7 +7,7 @@ from src.web_scraper import WebScraper
 
 class DownloadPodcast:
 
-    def __init__(self, podcast_name, episode_name, latest_episode, all_episodes):
+    def __init__(self, podcast_name, episode_name, latest_episode, all_episodes, max_episodes=0):
         self.podcast_name = podcast_name.lower()
         self.episode_search_name = episode_name
         self.latest_episode = latest_episode
@@ -18,6 +18,8 @@ class DownloadPodcast:
         self.web_scraping = WebScraper(headless=True)
         self.audio = Audio()
         self.current_episode_index = 1
+        self.max_episodes = max_episodes
+        self.episode_count = 0
 
     @property
     def get_podcast_url(self):
@@ -30,14 +32,22 @@ class DownloadPodcast:
             episode_element_in_podcast_page = ''
             current_initial_page = self.get_podcast_url
             current_page_index = 1
+            exit_flag = False
 
-            while True:
+            while not exit_flag:
                 while episode_element_in_podcast_page is not None:
+                    if self.episode_count >= self.max_episodes:
+                        print('Maximum number of episodes reached')
+                        exit_flag = True
+                        break
                     episode_element_in_podcast_page = self.get_next_episode()
                     if episode_element_in_podcast_page is not None:
                         self.download_episode_element(episode_element_in_podcast_page)
+                        self.episode_count += 1
                     # go back to initial podcast page
                     self.web_scraping.start_connection(current_initial_page)
+                if exit_flag:
+                    break
                 print('No more episodes found in this page, trying to move to next page')
                 if not self.go_to_next_page():
                     print('No more pages found in this podcast')
