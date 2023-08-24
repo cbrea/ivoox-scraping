@@ -127,8 +127,10 @@ class DownloadPodcast:
                 break
             except Exception:
                 print('XPath for next episode did not match, trying a different one')
-        if episode_element_in_podcast_page is None:
-            return None
+        if episode_element_in_podcast_page is None and self.current_episode_index < 30:
+            # sometimes they include a div block with advertisement, so we need to skip it
+            self.current_episode_index += 1
+            return self.get_next_episode()
         print(f'Episode {self.current_episode_index} found!')
         self._save_chapter_name(episode_element_in_podcast_page)
         self.current_episode_index += 1
